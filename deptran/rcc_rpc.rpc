@@ -1,0 +1,101 @@
+namespace rococo;
+
+
+abstract service MultiPaxos {
+
+  defer Forward(ContainerCommand cmd);
+
+  defer Prepare(uint64_t slot,
+                uint64_t ballot |
+                uint64_t max_ballot);
+
+  defer Accept(uint64_t slot,
+               uint64_t ballot,
+               ContainerCommand cmd |
+               uint64_t max_ballot);
+
+  defer Decide(uint64_t slot,
+               uint64_t ballot,
+               ContainerCommand cmd);
+}
+
+// below is for 2PL and OCC
+abstract service Classic {
+    defer Dispatch(SimpleCommand cmd |
+                  i32 res,
+                  map<i32, Value> output);
+
+    defer Prepare(i64 tid, 
+                  vector<i32> sids | 
+                  i32 res);
+
+    defer Commit(i64 tid | i32 res);
+
+    defer Abort(i64 tid | i32 res);
+
+    // input: contains many pieces, each piece consist of
+    // | <i32 p_type> <i64 pid> <i32 input_size> <i32 max_output_size> 
+    // <input_0> <input_1> ... |
+    // output: contains many pieces, each piece consist of
+    // | <i32 res> <i32 output_size> <output_0> <output_1> ... |
+
+    // below is for what?
+
+    defer rpc_null( | );
+}
+
+
+// Below is for statistics
+
+struct ValueTimesPair {
+    i64 value;
+    i64 times;
+}
+
+struct TxnInfoRes {
+    i32 start_txn;  // total number of started txns
+    i32 total_txn;  // total number of finished txns
+    i32 total_try;  // total number of tries finished
+    i32 commit_txn; // number of commit transactions
+    vector<double> this_latency; // latencies started && finish in this period
+    vector<double> last_latency; // latencies started in last period, finish in this period
+    vector<double> attempt_latency; // interval latencies for each attempts
+    vector<double> interval_latency; // latencies finish in this period
+    vector<i32> num_try;
+}
+
+struct ServerResponse {
+    map<string, ValueTimesPair> statistics;
+    double cpu_util;
+    i64 r_cnt_sum;
+    i64 r_cnt_num;
+    i64 r_sz_sum;
+    i64 r_sz_num;
+}
+
+struct ClientResponse  {
+    map<i32, TxnInfoRes> txn_info; // statistics for each txn
+    i64 run_sec;    // running time in seconds
+    i64 run_nsec;   // running time in nano seconds
+    i64 period_sec;    // running time in seconds
+    i64 period_nsec;   // running time in nano seconds
+    i32 is_finish;  // if client finishs
+    i64 n_asking;   // asking finish request count
+}
+
+abstract service ServerControl {
+    server_shutdown ( | );
+    server_ready ( | i32 res);
+    server_heart_beat_with_data ( | ServerResponse res);
+    server_heart_beat ( | );
+}
+
+abstract service ClientControl {
+    client_get_txn_names( | map<i32, string> txn_names);
+    client_shutdown ( | );
+    client_force_stop ( | );
+    client_response ( | ClientResponse res);
+    client_ready ( | i32 res);
+    defer client_ready_block ( | i32 res);
+    client_start ( | );
+}

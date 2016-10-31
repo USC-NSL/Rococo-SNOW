@@ -1,0 +1,23 @@
+
+namespace rococo;
+
+abstract service Brq {
+
+  defer Dispatch(SimpleCommand cmd |
+                 i32 res,
+                 map<i32, Value> output,
+                 BrqGraph ret_graph);
+
+  defer Commit(cmdid_t id,
+               RccGraph |
+               int32_t res,
+               TxnOutput output);
+
+  defer Inquire(cmdid_t txn_id |
+                BrqGraph ret_graph);
+
+  defer PreAccept(cmdid_t txn_id,
+                  RccGraph graph |
+                  i32 res,
+                  RccGraph ret_graph);
+}
